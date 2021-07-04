@@ -1,7 +1,8 @@
 The intent of this repository is to include a Dockerfile for running a
-development/test instance of fichub.net. It falls far short of that currently.
+development/test instance of FicHub.net.
 
-Currently fichub.net's frontend depends on a few things to be fully functional:
+Currently FicHub.net's prod environment depends on a few things to be fully
+functional:
 	nginx
 	uwsgi
 	postgresql
@@ -9,8 +10,11 @@ Currently fichub.net's frontend depends on a few things to be fully functional:
 	calibre
 	alexandria
 
-All but the final should be included in the built images currently.
-fichub.net's code itself is not however, and alexandria is an entirely
-separate can of worms to self-host. It may be best to mock it out until a
-similar infra repository can be created for it.
+All but the final should be included in the built images currently. Just run:
+	./build.sh && docker-compose up
+to build, run, and tail the logs. The local instance of FicHub will be
+available on :59294 .
+
+Alexandria is an entirely separate can of worms to self-host. It may be best
+to mock it out until a similar infra repository can be created for it.
 

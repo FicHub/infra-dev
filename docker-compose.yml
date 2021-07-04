@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: pgpass
+      POSTGRES_USER: fichub
+      POSTGRES_DB: fichub
+      PGDATA: /var/lib/postgresql/data/fichub
+    volumes:
+      - db_data:/var/lib/postgresql/data
+  es:
+    image: elasticsearch:7.13.2
+    restart: always
+    environment:
+      - node.name=fichub_es_1
+      - cluster.name=fichub_es
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - ELASTIC_PASSWORD=espass
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+  app:
+    build: .
+    image: fichub/fichub_net:0.0.1
+    restart: always
+    ports:
+      - "59294:5000"
+    # TODO: get app to actually wait until these are up
+    depends_on:
+      - db
+      - es
+
+volumes:
+  db_data:
+  es_data:
+
+#nginx uwsgi?
+

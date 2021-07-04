@@ -1,6 +1,5 @@
 FROM ubuntu:20.04
 
-# set version label
 ARG BUILD_DATE
 ARG VERSION
 ARG CALIBRE_RELEASE
@@ -16,17 +15,6 @@ RUN \
 	echo "=== initial setup ===" && \
 	apt-get update && \
 	apt-get install -y --no-install-recommends \
-		ca-certificates \
-		gnupg2
-
-COPY GPG-KEY-elasticsearch /tmp/GPG-KEY-elasticsearch
-RUN \
-	apt-key add /tmp/GPG-KEY-elasticsearch && \
-	echo "deb https://artifacts.elastic.co/packages/7.x/apt stable main" >> /etc/apt/sources.list.d/elastic-7.x.list
-
-RUN \
-	apt-get update && \
-	apt-get install -y --no-install-recommends \
 		dbus \
 		fcitx-rime \
 		fonts-wqy-microhei \
@@ -39,23 +27,19 @@ RUN \
 		libxcb-randr0 \
 		libxcb-render-util0 \
 		libxcb-xinerama0 \
-		libxi-dev libxrandr-dev libxcomposite1 libxcomposite-dev \
-		curl jq wget xz-utils \
-		python3 python3-dev python3-pip python3-virtualenv build-essential \
-		python3-xdg python3-flask python3-lxml python3-dateutil \
+		libxi-dev libxrandr-dev libxcomposite1 libxcomposite-dev libnss3-dev \
+		xdg-utils curl jq wget xz-utils git \
+		python3 python3-dev python3-pip python3-virtualenv python3-xdg \
+		build-essential node-typescript node-typescript-types sassc rsync \
 		nginx uwsgi-core uwsgi-plugin-python3 \
-		postgresql postgresql-contrib python3-psycopg2 \
-		apache2-utils \
-		elasticsearch
+		libpq-dev
 
 COPY calibre-${CALIBRE_RELEASE}-x86_64.txz /tmp/calibre-tarball.txz
 
 RUN echo "=== install calibre ===" && \
-	mkdir -p \
-		/opt/calibre && \
-	tar xvf /tmp/calibre-tarball.txz -C \
-		/opt/calibre && \
-		/opt/calibre/calibre_postinstall
+	mkdir -p /opt/calibre && \
+	tar xvf /tmp/calibre-tarball.txz -C /opt/calibre && \
+	/opt/calibre/calibre_postinstall
 
 RUN echo "=== dev tools ===" && \
 	apt-get install -y --no-install-recommends \
@@ -69,9 +53,33 @@ RUN echo "=== finalize ===" && \
 		/var/lib/apt/lists/* \
 		/var/tmp/*
 
+RUN useradd -ms /bin/bash fichub_net
 
-# add local files
-#COPY fichub.net/ /
-CMD /usr/bin/bash
-#ENTRYPOINT /bin/bash
+# add dev local version of fichub.net
+COPY python-oil /opt/python-oil
+COPY --chown=fichub_net fichub.net /home/fichub_net/fichub.net
+RUN mkdir /var/www/fichub.net /var/www/b.fichub.net && \
+	chown fichub_net:fichub_net /var/www/fichub.net && \
+	chown fichub_net:fichub_net /var/www/b.fichub.net
+
+USER fichub_net
+
+RUN echo "=== fichub.net setup ===" && \
+	ln -s /opt/python-oil/src /home/fichub_net/fichub.net/oil && \
+	cd /home/fichub_net/fichub.net/ && \
+	virtualenv venv && \
+	./venv/bin/pip install -r requirements.txt && \
+	make beta && make prod
+
+ENV FLASK_APP=main.py
+ENV FLASK_ENV=development
+
+ENV OIL_DB_HOST=db
+ENV OIL_DB_DBNAME=fichub
+ENV OIL_DB_USER=fichub
+ENV OIL_DB_PASSWORD=pgpass
+
+CMD cd /home/fichub_net/fichub.net && \
+	sleep 10s && \
+	./venv/bin/flask run --host 0.0.0.0
 
